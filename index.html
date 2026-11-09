@@ -1,0 +1,480 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CONVOSENSE AI</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0b1020;
+  color: white;
+}
+
+header {
+  padding: 25px 18px;
+  text-align: center;
+  background: #151d35;
+  border-bottom: 1px solid #283553;
+}
+
+header h1 {
+  color: #62e6d0;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+header p {
+  color: #aab6d1;
+  font-size: 14px;
+}
+
+.container {
+  max-width: 650px;
+  margin: auto;
+  padding: 20px;
+}
+
+.card {
+  background: #151d35;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 18px;
+  border: 1px solid #283553;
+}
+
+h2 {
+  font-size: 18px;
+  color: #62e6d0;
+}
+
+textarea, select {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #405071;
+  background: #0b1020;
+  color: white;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+input[type=file] {
+  width: 100%;
+  margin: 15px 0;
+  color: #ccd5e8;
+}
+
+button {
+  background: #62e6d0;
+  color: #091522;
+  border: none;
+  padding: 13px;
+  border-radius: 9px;
+  width: 100%;
+  font-weight: bold;
+  font-size: 15px;
+  margin-top: 12px;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #293956;
+  color: white;
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.result {
+  background: #0b1020;
+  border-radius: 10px;
+  padding: 15px;
+  margin-top: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.reply {
+  border: 1px solid #405071;
+  padding: 13px;
+  border-radius: 10px;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+.reply button {
+  width: auto;
+  padding: 9px 15px;
+}
+
+.small {
+  font-size: 12px;
+  color: #9caac5;
+  line-height: 1.6;
+}
+
+footer {
+  text-align: center;
+  padding: 25px;
+  color: #8290aa;
+  font-size: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>CONVOSENSE AI</h1>
+  <p>Understand conversations. Communicate better.</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>01. Upload a conversation</h2>
+    <p class="small">
+      Upload a screenshot from WhatsApp, Instagram,
+      Facebook or another messaging platform.
+    </p>
+
+    <input type="file" id="imageInput" accept="image/*">
+
+    <button onclick="extractText()" id="ocrButton">
+      Read Screenshot
+    </button>
+
+    <p id="ocrStatus" class="small"></p>
+  </div>
+
+  <div class="card">
+    <h2>02. Conversation</h2>
+    <textarea id="conversation"
+      placeholder="Extracted conversation will appear here. You can also paste messages manually..."></textarea>
+
+    <label class="small">What kind of response do you want?</label>
+
+    <select id="tone">
+      <option value="natural">Natural and genuine</option>
+      <option value="friendly">Friendly</option>
+      <option value="professional">Professional</option>
+      <option value="empathetic">Empathetic and understanding</option>
+      <option value="confident">Confident</option>
+      <option value="playful">Light-hearted and playful</option>
+      <option value="short">Short and direct</option>
+    </select>
+
+    <button onclick="analyseConversation()">
+      Analyse Conversation
+    </button>
+  </div>
+
+  <div class="card">
+    <h2>03. Emotional analysis</h2>
+    <div id="emotion" class="result">
+      Your analysis will appear here.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>04. Suggested responses</h2>
+    <div id="replies">
+      Suggested responses will appear here.
+    </div>
+  </div>
+
+  <p class="small">
+    Privacy: Conversations are processed in your browser
+    in this starter version. Avoid uploading private
+    information or screenshots without the other person's
+    permission. OCR and language-based emotion estimates
+    can make mistakes.
+  </p>
+
+</div>
+
+<footer>
+  CONVOSENSE AI | Communicate with understanding.
+</footer>
+
+<script>
+
+// SCREENSHOT TEXT EXTRACTION
+
+async function extractText() {
+  const file = document.getElementById("imageInput").files[0];
+  const status = document.getElementById("ocrStatus");
+  const button = document.getElementById("ocrButton");
+
+  if (!file) {
+    status.textContent = "Please select a screenshot first.";
+    return;
+  }
+
+  button.disabled = true;
+  status.textContent = "Reading screenshot... Please wait.";
+
+  try {
+    const result = await Tesseract.recognize(
+      file,
+      "eng"
+    );
+
+    document.getElementById("conversation").value =
+      result.data.text;
+
+    status.textContent = "Screenshot successfully read!";
+  } catch (error) {
+    status.textContent =
+      "Could not read this screenshot. Try another image.";
+  }
+
+  button.disabled = false;
+}
+
+
+// BASIC EMOTION ESTIMATION
+
+function detectEmotion(text) {
+
+  const message = text.toLowerCase();
+
+  const emotions = {
+    Happy: [
+      "happy", "great", "wonderful", "love",
+      "excited", "amazing", "haha", "lol"
+    ],
+
+    Angry: [
+      "angry", "annoyed", "hate", "furious",
+      "whatever", "leave me alone"
+    ],
+
+    Sad: [
+      "sad", "upset", "disappointed", "lonely",
+      "hurt", "cry", "miss you"
+    ],
+
+    Interested: [
+      "tell me more", "really?", "how are you",
+      "what about you", "interesting"
+    ],
+
+    Confused: [
+      "confused", "what do you mean",
+      "i don't understand", "why?"
+    ],
+
+    Worried: [
+      "worried", "scared", "afraid",
+      "concerned", "nervous"
+    ]
+  };
+
+  let scores = {};
+
+  for (let emotion in emotions) {
+    scores[emotion] = emotions[emotion].filter(
+      word => message.includes(word)
+    ).length;
+  }
+
+  let highest = Math.max(...Object.values(scores));
+
+  if (highest === 0) {
+    return {
+      name: "Neutral / Unclear",
+      explanation:
+        "There is not enough clear emotional language to estimate a dominant tone."
+    };
+  }
+
+  let detected = Object.keys(scores).filter(
+    emotion => scores[emotion] === highest
+  );
+
+  return {
+    name: detected.join(" and "),
+    explanation:
+      "These emotional signals appear in the wording. " +
+      "They do not establish what the sender actually feels."
+  };
+}
+
+
+// REPLY GENERATOR
+
+function generateReplies(text, tone) {
+
+  const message = text.toLowerCase();
+
+  let replies = [];
+
+  if (
+    message.includes("how are you") ||
+    message.includes("how are u")
+  ) {
+    replies = [
+      "I'm doing well, thanks for asking! How about you?",
+      "Pretty good! How has your day been?",
+      "I'm good. It's nice hearing from you!"
+    ];
+  }
+
+  else if (
+    message.includes("sorry") ||
+    message.includes("apolog")
+  ) {
+    replies = [
+      "I appreciate you acknowledging that. Thank you.",
+      "It's okay. I think we can talk things through.",
+      "Thank you for apologising. I would like us to understand each other."
+    ];
+  }
+
+  else if (
+    message.includes("thank you") ||
+    message.includes("thanks")
+  ) {
+    replies = [
+      "You're very welcome!",
+      "No problem at all. Happy to help.",
+      "Anytime! I appreciate you too."
+    ];
+  }
+
+  else if (
+    message.includes("?")
+  ) {
+    replies = [
+      "That's an interesting question. Let me explain.",
+      "Good question! Here's what I think...",
+      "I see what you mean. What made you ask?"
+    ];
+  }
+
+  else {
+    replies = [
+      "I understand what you're saying. Tell me more.",
+      "That's interesting. I'd like to understand your perspective.",
+      "I hear you. What do you think we should do?"
+    ];
+  }
+
+  const styles = {
+    natural: replies,
+    friendly: [
+      "Haha, I get what you mean! Tell me more.",
+      "That's interesting! I'd love to hear more.",
+      "I understand. How has your day been?"
+    ],
+    professional: [
+      "Thank you for sharing that. I understand your point.",
+      "I appreciate the clarification. Let's discuss further.",
+      "Thank you. I would be interested in your perspective."
+    ],
+    empathetic: [
+      "I can understand why that might matter to you.",
+      "I hear what you're saying, and I want to understand.",
+      "Thank you for sharing how you feel."
+    ],
+    confident: [
+      "I understand your point. Here's how I see it.",
+      "That's fair, but I also have a different perspective.",
+      "Let's be honest about what we both want."
+    ],
+    playful: [
+      "Haha, now that's an interesting conversation!",
+      "You have definitely got me thinking!",
+      "Okay, I wasn't expecting that!"
+    ],
+    short: [
+      "I understand.",
+      "That's fair.",
+      "Tell me more."
+    ]
+  };
+
+  return styles[tone] || replies;
+}
+
+
+// MAIN ANALYSIS
+
+function analyseConversation() {
+
+  const text =
+    document.getElementById("conversation").value.trim();
+
+  const tone =
+    document.getElementById("tone").value;
+
+  if (text.length < 3) {
+    alert("Please enter a conversation first.");
+    return;
+  }
+
+  const emotion = detectEmotion(text);
+
+  document.getElementById("emotion").innerHTML = `
+    <strong>Possible emotional tone:</strong>
+    ${emotion.name}
+    <br><br>
+    ${emotion.explanation}
+  `;
+
+  const suggestions = generateReplies(text, tone);
+
+  const replyArea = document.getElementById("replies");
+
+  replyArea.innerHTML = "";
+
+  suggestions.forEach((reply, index) => {
+
+    const div = document.createElement("div");
+    div.className = "reply";
+
+    const paragraph = document.createElement("p");
+    paragraph.textContent = reply;
+
+    const button = document.createElement("button");
+    button.textContent = "Copy response";
+
+    button.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(reply);
+        button.textContent = "Copied!";
+      } catch {
+        button.textContent = "Copy unavailable";
+      }
+    };
+
+    div.appendChild(paragraph);
+    div.appendChild(button);
+
+    replyArea.appendChild(div);
+  });
+
+}
+
+</script>
+
+</body>
+</html>
